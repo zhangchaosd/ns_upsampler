@@ -1,4 +1,5 @@
 import time
+
 import cv2
 import numpy as np
 import torch
@@ -652,5 +653,5 @@ if __name__ == "__main__":
     # res = model.load_state_dict(s, strict=False)
     model.eval()
     model.to(device)
-    parse_video("/Users/zhangchao/Downloads/z1.mp4", scale, model, device)
+    parse_video("z1.mp4", scale, model, device)
     # parse_img("/Users/zhangchao/Downloads/IMG_1657.PNG")
