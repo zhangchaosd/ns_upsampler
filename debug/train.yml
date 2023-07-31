@@ -6,7 +6,7 @@ verbose: true
 dataset:
   lr_path: dataset/lr_videos
   hr_path: dataset/hr_videos
-  batch_size: 8
+  batch_size: 2
 
 # model configs
 model:
@@ -120,6 +120,6 @@ metric:
 
 # logger configs
 logger:
-  log_freq: 100
+  log_freq: 1
   decay: 0.99
   ckpt_freq: 20000

@@ -14,7 +14,7 @@ def define_generator(opt):
 
 def define_discriminator(opt):
     net_D_opt = opt["model"]["discriminator"]
-    spatial_size = 128  # opt["dataset"]["train"]["crop_size"]
+    spatial_size = 128  # opt["dataset"]["train"]["crop_size"]  TODO
 
     from .tecogan_nets import SpatioTemporalDiscriminator
 

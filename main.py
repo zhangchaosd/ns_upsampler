@@ -6,13 +6,13 @@ import time
 
 import torch
 import yaml
+
+from data import create_dataloader
 from metrics.metric_calculator import MetricCalculator
 from metrics.model_summary import profile_model, register
 from models import VSRGANModel
 from models.networks import define_generator
 from utils import base_utils, data_utils
-
-from data import create_dataloader
 
 
 def train(opt):
@@ -365,3 +365,6 @@ if __name__ == "__main__":
 
     else:
         raise ValueError("Unrecognized mode: {} (train|test|profile)".format(args.mode))
+
+
+# python main.py --exp_dir debug  --mode train --opt train.yml --gpu_id -1
