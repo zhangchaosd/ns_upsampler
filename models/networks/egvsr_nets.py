@@ -1,7 +1,13 @@
+import time
+
+import cv2
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from PIL import Image, ImageFilter
+from tqdm import tqdm
+
 from models.networks.base_nets import BaseSequenceDiscriminator, BaseSequenceGenerator
 from utils.data_utils import float32_to_uint8
 from utils.net_utils import BicubicUpsample, backward_warp, space_to_depth
@@ -126,7 +132,9 @@ class SRNet(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-        self.conv_up_cheap = nn.Sequential(nn.PixelShuffle(4), nn.ReLU(inplace=True))
+        self.conv_up_cheap = nn.Sequential(
+            nn.PixelShuffle(scale), nn.ReLU(inplace=True)
+        )
 
         # output conv.
         self.conv_out = nn.Conv2d(4, out_nc, 3, 1, 1, bias=True)
@@ -138,20 +146,18 @@ class SRNet(nn.Module):
         """lr_curr: the current lr data in shape nchw
         hr_prev_tran: the previous transformed hr_data in shape n(4*4*c)hw
         """
-
         out = self.conv_in(torch.cat([lr_curr, hr_prev_tran], dim=1))
         out = self.resblocks(out)
         out = self.conv_up_cheap(out)
         out = self.conv_out(out)
         # out += self.upsample_func(lr_curr)
-
         return out
 
 
 class FRNet(BaseSequenceGenerator):
     """Frame-recurrent network proposed in https://arxiv.org/abs/1801.04590"""
 
-    def __init__(self, in_nc=3, out_nc=3, nf=64, nb=16, scale=4):
+    def __init__(self, in_nc=3, out_nc=3, nb=10, degradation="BD", scale=4):
         super(FRNet, self).__init__()
 
         self.scale = scale
@@ -160,7 +166,13 @@ class FRNet(BaseSequenceGenerator):
 
         # define fnet & srnet
         self.fnet = FNet(in_nc)
-        self.srnet = SRNet(in_nc, out_nc, nf, nb, self.upsample_func)
+        self.srnet = SRNet(
+            in_nc, out_nc, 4 * scale * scale, nb, self.upsample_func, scale=scale
+        )
+
+        # setup params
+        self.lr_prev = None
+        self.hr_prev = None
 
     def generate_dummy_input(self, lr_size):
         c, lr_h, lr_w = lr_size
@@ -292,6 +304,34 @@ class FRNet(BaseSequenceGenerator):
             hr_seq.append(float32_to_uint8(hr_frm))
 
         return np.stack(hr_seq).transpose(0, 2, 3, 1)  # thwc
+
+    def deliver_frame(self, lr_data, device):
+        """
+        Parameters:
+            :param lr_data: torch.FloatTensor in shape chw
+            :param device: torch.device
+
+            :return hr_seq: uint8 np.ndarray in shape chw
+        """
+
+        # setup params
+        _, c, h, w = lr_data.size()
+        if self.lr_prev is None:
+            self.lr_prev = torch.zeros(1, c, h, w, dtype=torch.float32).to(device)
+            self.hr_prev = torch.zeros(
+                1, c, self.scale * h, self.scale * w, dtype=torch.float32
+            ).to(device)
+
+        with torch.no_grad():
+            self.eval()
+
+            lr_curr = lr_data.to(device)
+            hr_curr = self.forward(lr_curr, self.lr_prev, self.hr_prev)
+            self.lr_prev, self.hr_prev = lr_curr, hr_curr
+
+            hr_frm = hr_curr.squeeze(0).cpu()
+
+        return hr_frm
 
 
 # ------------------ discriminator modules ------------------ #
@@ -516,17 +556,101 @@ class SpatialDiscriminator(BaseSequenceDiscriminator):
         return pred, ret_dict
 
 
+def save_to_video_file(data, path):
+    # Assuming that you have a tensor with shape (T, H, W, C)
+    # tensor = torch.randn(30, h, w, 3)
+    _, h, w, _ = data.shape
+
+    # Convert tensor to numpy array
+    array = data
+    # Change shape from (T, H, W, C) to (T, C, H, W)
+    array = np.transpose(array, (0, 3, 1, 2))
+    # Change shape from (T, C, H, W) to (T, H, W, C) as required by OpenCV
+    array = np.transpose(array, (0, 2, 3, 1))
+    array = array[..., ::-1]
+    array = (array * 255).astype(np.uint8)
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # FourCC code for MP4
+    video = cv2.VideoWriter(path, fourcc, 30.0, (w, h))  # VideoWriter object
+    for i in range(array.shape[0]):
+        video.write(array[i])
+    video.release()
+
+
+def parse_img(path, model, device):
+    img = Image.open(path)
+    img = img.filter(ImageFilter.BoxBlur(radius=0.05))
+    if img.mode == "RGBA":
+        img = img.convert("RGB")
+    img = img.resize((1920, 1080))
+    img_np = np.array(img)
+
+    # 对于彩色图片，numpy数组的形状应为 (H, W, C)
+    # 我们需要将其重塑为(C, H, W)
+    img_np = np.transpose(img_np, (2, 0, 1))
+
+    # 将numpy数组转换为tensor，并添加一个额外的维度在最前面 (T)
+    img_torch = torch.from_numpy(img_np).float()
+    img_torch = img_torch.unsqueeze(0)  # Add an extra dimension at the beginning
+    img_torch /= 255.0
+
+    # Repeat the tensor 30 times along the T dimension
+    img_torch_repeated = img_torch.repeat(10, 1, 1, 1)
+    o = model.deliver_frame(img_torch_repeated, device=device)
+    o = np.clip(o, 0.0, 1.0)
+    save_to_video_file(o, path[:-4] + "_img.mp4")
+
+
+def parse_video(path, scale, model, device):
+    w = 1920 * scale
+    h = 1080 * scale
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    video_saver = cv2.VideoWriter(path[:-4] + "_new.mp4", fourcc, 30.0, (w, h))
+    video_reader = cv2.VideoCapture(path)
+    frame_count = video_reader.get(cv2.CAP_PROP_FRAME_COUNT)
+    # while video_reader.isOpened():
+    for _ in tqdm(range(int(frame_count))):
+        ret, frame = video_reader.read()
+        if not ret:
+            break
+        frame = cv2.resize(frame, (1920, 1080))
+        start_time = time.time()
+        frame = Image.fromarray(frame)
+        frame = frame.filter(ImageFilter.BoxBlur(radius=0.05))
+        frame = np.array(frame)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = np.transpose(frame, (2, 0, 1))
+        frame = torch.from_numpy(frame).float()
+        frame /= 255.0
+        # chw
+        frame = frame.unsqueeze(0)
+        frame = model.deliver_frame(frame, device)
+        frame = frame.numpy()
+        frame = np.clip(frame, 0.0, 1.0)
+        frame *= 255
+        frame = frame.astype(np.uint8)
+        frame = np.transpose(frame, (1, 2, 0))
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        end_time = time.time()
+
+        # Calculate elapsed time in milliseconds
+        elapsed_time_ms = (end_time - start_time) * 1000
+        print("Cost time: ", elapsed_time_ms)
+        video_saver.write(frame)  # hwc
+        if _ > 10:
+            break
+
+    video_reader.release()
+    video_saver.release()
+
+
 if __name__ == "__main__":
-    from torchsummary import summary
-
-    img_size = (960, 640)
-    cpu_cuda = "cuda"
-
-    device = torch.device(cpu_cuda)
-
-    model = ResidualBlock()
+    device = "mps"
+    device = torch.device(device)
+    scale = 2
+    model = FRNet(scale=scale)
+    s = torch.load("EGVSR_iter420000.pth", map_location=device)
+    # res = model.load_state_dict(s, strict=False)
     model.eval()
     model.to(device)
-
-    print(model)
-    summary(model, (64, *img_size), batch_size=1, device=cpu_cuda)
+    parse_video("z1.mp4", scale, model, device)
+    # parse_img("/Users/zhangchao/Downloads/IMG_1657.PNG")

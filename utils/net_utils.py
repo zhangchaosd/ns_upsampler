@@ -81,17 +81,17 @@ def backward_warp(x, flow, mode="bilinear", padding_mode="border"):
     return output
 
 
-# def get_upsampling_func(scale=4, degradation='BI'):
-#     if degradation == 'BI':
+# def get_upsampling_func(scale=4, degradation="BI"):
+#     if degradation == "BI":
 #         upsample_func = functools.partial(
-#             F.interpolate, scale_factor=scale, mode='bilinear',
-#             align_corners=False)
+#             F.interpolate, scale_factor=scale, mode="bilinear", align_corners=False
+#         )
 
-#     elif degradation == 'BD':
+#     elif degradation == "BD":
 #         upsample_func = BicubicUpsample(scale_factor=scale)
 
 #     else:
-#         raise ValueError('Unrecognized degradation: {}'.format(degradation))
+#         raise ValueError("Unrecognized degradation: {}".format(degradation))
 
 #     return upsample_func
 
@@ -141,7 +141,7 @@ class BicubicUpsample(nn.Module):
         input = F.pad(input, (1, 2, 1, 2), mode="replicate")
 
         # calculate output (height)
-        kernel_h = self.kernels.repeat(c, 1).view(-1, 1, s, 1)
+        kernel_h = self.kernels.repeat(c, 1).view(-1, 1, 4, 1)
         output = F.conv2d(input, kernel_h, stride=1, padding=0, groups=c)
         output = (
             output.reshape(n, c, s, -1, w + 3)
@@ -150,12 +150,11 @@ class BicubicUpsample(nn.Module):
         )
 
         # calculate output (width)
-        kernel_w = self.kernels.repeat(c, 1).view(-1, 1, 1, s)
+        kernel_w = self.kernels.repeat(c, 1).view(-1, 1, 1, 4)
         output = F.conv2d(output, kernel_w, stride=1, padding=0, groups=c)
         output = (
             output.reshape(n, c, s, h * s, -1)
             .permute(0, 1, 3, 4, 2)
             .reshape(n, c, h * s, -1)
         )
-
         return output
