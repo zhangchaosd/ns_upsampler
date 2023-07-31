@@ -18,7 +18,7 @@ class SRDataset(Dataset):
 
     def __getitem__(self, idx):
         hr_video_path = os.path.join(self.hr_path, self.videos[idx])
-        random_14 = random.randint(1, 4)
+        random_14 = random.randint(0, 3)
         lr_video_path = os.path.join(
             self.lr_path, self.videos[idx][:-4] + f"_{random_14}.mp4"
         )

@@ -6,7 +6,7 @@ def define_generator(opt):
     return FRNet(
         in_nc=net_G_opt["in_nc"],
         out_nc=net_G_opt["out_nc"],
-        nf=net_G_opt["nf"],
+        # nf=net_G_opt["nf"],
         nb=net_G_opt["nb"],
         scale=opt["scale"],
     )
@@ -14,7 +14,7 @@ def define_generator(opt):
 
 def define_discriminator(opt):
     net_D_opt = opt["model"]["discriminator"]
-    spatial_size = opt["dataset"]["train"]["crop_size"]
+    spatial_size = 128  # opt["dataset"]["train"]["crop_size"]
 
     from .tecogan_nets import SpatioTemporalDiscriminator
 
@@ -22,4 +22,5 @@ def define_discriminator(opt):
         in_nc=net_D_opt["in_nc"],
         spatial_size=spatial_size,
         tempo_range=net_D_opt["tempo_range"],
+        scale=opt["scale"],
     )

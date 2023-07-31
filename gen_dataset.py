@@ -26,7 +26,7 @@ def split(frame):
 def half_resolution(input_video):
     input_video_path = os.path.join(ORI_FOLDER, input_video)
     output_hr_video_path = os.path.join(HR_FOLDER, input_video)
-    output_lr_video_path = os.path.join(LR_FOLDER, input_video)
+    # output_lr_video_path = os.path.join(LR_FOLDER, input_video)
 
     cap = cv2.VideoCapture(input_video_path)
 
@@ -37,7 +37,7 @@ def half_resolution(input_video):
     half_frame_height = frame_height // 2
     fps = cap.get(cv2.CAP_PROP_FPS)
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    num_videos = ((frame_count - 1) // NUM_FRAMES_PER_VIDEO) + 1
+    num_videos = frame_count // NUM_FRAMES_PER_VIDEO
     for i in range(num_videos):
         output_hr_video_path = os.path.join(
             HR_FOLDER, input_video.split(".")[0] + f"_{i}.mp4"

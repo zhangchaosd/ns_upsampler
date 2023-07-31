@@ -293,15 +293,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode", type=str, required=True, help="which mode to use (train|test|profile)"
     )
-    parser.add_argument(
-        "--model", type=str, required=True, help="which model to use (FRVSR|TecoGAN)"
-    )
+    # parser.add_argument(
+    #     "--model", type=str, required=True, help="which model to use (FRVSR|TecoGAN)"
+    # )
     parser.add_argument(
         "--opt", type=str, required=True, help="path to the option yaml file"
     )
     parser.add_argument("--gpu_id", type=int, default=-1, help="GPU index, -1 for CPU")
     parser.add_argument(
-        "--lr_size", type=str, default="3x256x256", help="size of the input frame"
+        "--lr_size", type=str, default="3x360x640", help="size of the input frame"
     )
     parser.add_argument(
         "--test_speed",
