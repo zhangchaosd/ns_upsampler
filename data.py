@@ -70,7 +70,11 @@ class SRDataset(Dataset):
 
 
 def create_dataloader(opt):
-    dataset = SRDataset(opt["dataset"]["hr_path"], opt["dataset"]["lr_path"])
+    dataset = SRDataset(
+        opt["dataset"]["hr_path"],
+        opt["dataset"]["lr_path"],
+        opt["dataset"]["crop_size"],
+    )
     dataloader = DataLoader(
         dataset, batch_size=opt["dataset"]["batch_size"], shuffle=True, pin_memory=True
     )

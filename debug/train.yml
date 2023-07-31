@@ -7,6 +7,7 @@ dataset:
   lr_path: dataset/lr_videos
   hr_path: dataset/hr_videos
   batch_size: 2
+  crop_size: 128
 
 # model configs
 model:
