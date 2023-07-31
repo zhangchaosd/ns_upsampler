@@ -3,10 +3,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from utils.data_utils import float32_to_uint8
 from utils.net_utils import BicubicUpsample, backward_warp, space_to_depth
-
-from .base_nets import BaseSequenceDiscriminator, BaseSequenceGenerator
 
 
 # -------------------- generator modules -------------------- #
@@ -148,7 +147,7 @@ class SRNet(nn.Module):
         return out
 
 
-class FRNet(BaseSequenceGenerator):
+class FRNet(nn.Module):
     """Frame-recurrent network proposed in https://arxiv.org/abs/1801.04590"""
 
     def __init__(self, in_nc=3, out_nc=3, nf=64, nb=16, scale=4):
@@ -338,7 +337,7 @@ class DiscriminatorBlocks(nn.Module):
         return out4, feature_list
 
 
-class SpatioTemporalDiscriminator(BaseSequenceDiscriminator):
+class SpatioTemporalDiscriminator(nn.Module):
     """Spatio-Temporal discriminator in proposed in TecoGAN"""
 
     def __init__(self, in_nc=3, spatial_size=128, tempo_range=3, scale=4):
@@ -468,7 +467,7 @@ class SpatioTemporalDiscriminator(BaseSequenceDiscriminator):
         return pred, ret_dict
 
 
-class SpatialDiscriminator(BaseSequenceDiscriminator):
+class SpatialDiscriminator(nn.Module):
     """Spatial discriminator"""
 
     def __init__(self, in_nc=3, spatial_size=128, use_cond=False):
