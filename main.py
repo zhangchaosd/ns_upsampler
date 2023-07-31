@@ -46,6 +46,8 @@ def train(opt):
     # train
     for epoch in range(total_epoch):
         for data in train_loader:
+            for k in data:
+                data[k]=data[k].to(opt["device"])
             # update iter
             iter += 1
             curr_iter = start_iter + iter
@@ -368,3 +370,11 @@ if __name__ == "__main__":
 
 
 # python main.py --exp_dir debug  --mode train --opt train.yml --gpu_id -1
+'''
+
+opencv-python
+tqdm
+pyyaml
+scipy
+scikit-image
+'''

@@ -1,4 +1,4 @@
-import flow_vis
+# import flow_vis
 import numpy as np
 import torch
 import torch.nn as nn
@@ -290,7 +290,7 @@ class FRNet(nn.Module):
                 hr_frm = hr_warp.transpose(1, 2, 0)  # hwc
                 flow_frm = hr_flow.squeeze(0).cpu().numpy()  # chw|rgb|uint8
                 flow_uv = flow_frm.transpose(1, 2, 0)  # hwc
-                flow_color = flow_vis.flow_to_color(flow_uv, convert_to_bgr=False)
+                # flow_color = flow_vis.flow_to_color(flow_uv, convert_to_bgr=False)
 
             hr_seq.append(float32_to_uint8(hr_frm))
             # hr_seq.append(float32_to_uint8(flow_color))

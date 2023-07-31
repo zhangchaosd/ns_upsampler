@@ -121,6 +121,6 @@ metric:
 
 # logger configs
 logger:
-  log_freq: 1
+  log_freq: 100
   decay: 0.99
-  ckpt_freq: 20000
+  ckpt_freq: 2000
