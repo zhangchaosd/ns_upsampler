@@ -652,4 +652,4 @@ if __name__ == "__main__":
     model.eval()
     model.to(device)
     parse_video("z1.mp4", scale, model, device)
-    # parse_img("/Users/zhangchao/Downloads/IMG_1657.PNG")
+    # parse_img("/Users/z/Downloads/IMG_1657.PNG")
