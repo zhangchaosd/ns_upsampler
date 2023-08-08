@@ -324,7 +324,7 @@ class FRNet(nn.Module):
         with torch.no_grad():
             self.eval()
 
-            lr_curr = lr_data.to(device)
+            lr_curr = lr_data
             hr_curr = self.forward(lr_curr, self.lr_prev, self.hr_prev)
             self.lr_prev, self.hr_prev = lr_curr, hr_curr
 

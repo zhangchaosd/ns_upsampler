@@ -28,11 +28,13 @@ def parse_video(path, scale, model, device):
         # frame = np.array(frame)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame = np.transpose(frame, (2, 0, 1))
-        frame = torch.from_numpy(frame).float()
+        frame = torch.from_numpy(frame).float().to(device)
         frame /= 255.0
         # chw
         frame = frame.unsqueeze(0)
+        start_time2 = time.time()
         frame = model.deliver_frame(frame, device)
+        end_time2 = time.time()
         frame = frame.numpy()
         frame = np.clip(frame, 0.0, 1.0)
         frame *= 255
@@ -44,6 +46,8 @@ def parse_video(path, scale, model, device):
         # Calculate elapsed time in milliseconds
         elapsed_time_ms = (end_time - start_time) * 1000
         print("Cost time: ", elapsed_time_ms)
+        elapsed_time_ms2 = (end_time2 - start_time2) * 1000
+        print("Cost time2: ", elapsed_time_ms2)
         video_saver.write(frame)  # hwc
 
     video_reader.release()
@@ -51,11 +55,11 @@ def parse_video(path, scale, model, device):
 
 
 if __name__ == "__main__":
-    device = "mps"
+    device = "cuda"
     device = torch.device(device)
     scale = 2
     model = FRNet(scale=scale)
-    s = torch.load("debug/train/ckpt/G_iter20000.pth", map_location=device)
+    s = torch.load("debug/train/ckpt/G_iter108000.pth", map_location=device)
     res = model.load_state_dict(s, strict=False)
     model.eval()
     model.to(device)
