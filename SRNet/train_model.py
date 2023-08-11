@@ -31,6 +31,7 @@ class SRNet(nn.Module):
         self.conv4 = nn.Conv2d(3, 3, 3, 1, 1)
 
     def forward(self, x):
+        x = transforms.functional.normalize(x, [0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
         x = self.init_upsample(x)
 
         # Feature extraction
@@ -53,7 +54,6 @@ class NSSRDataset(Dataset):
         self.transform2 = transforms.Compose(
             [
                 transforms.ToTensor(),
-                # transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
             ]
         )
 
