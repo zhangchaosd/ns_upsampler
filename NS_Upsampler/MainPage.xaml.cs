@@ -66,7 +66,7 @@ namespace NS_Upsampler
         {
             this.InitializeComponent();
 
-            _previewRenderer = new FrameRenderer(PreviewImage);
+            //_previewRenderer = new FrameRenderer(PreviewImage);
             _outputRenderer = new FrameRenderer(OutputImage);
 
             //_helper = new OpenCVHelper();
@@ -210,6 +210,22 @@ namespace NS_Upsampler
             return floatValues;
         }
 
+        // 以下是可能需要的辅助函数
+        // 这只是一个示意性的函数，您可能需要根据实际需求进行适当的调整
+        byte[] ConvertToByteFormat(float[] modelOutput)
+        {
+            byte[] result = new byte[modelOutput.Length]; // 乘以 4 为了转换为 BGRA8
+            for (int i = 0; i < modelOutput.Length; i++)
+            {
+                byte value = (byte)(modelOutput[i] * 255); // 假设模型的输出是 [0, 1] 范围的浮点数
+                result[i] = value;     // B
+                //result[i * 4 + 1] = value; // G
+                //result[i * 4 + 2] = value; // R
+                //result[i * 4 + 3] = 255;   // A
+            }
+            return result;
+        }
+
         private async void ColorFrameReader_FrameArrivedAsync(MediaFrameReader sender, MediaFrameArrivedEventArgs args)
         {
             var frame = sender.TryAcquireLatestFrame();
@@ -223,59 +239,58 @@ namespace NS_Upsampler
                     // The frame reader as configured in this sample gives BGRA8 with straight alpha, so need to convert it
                     originalBitmap = SoftwareBitmap.Convert(inputBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
 
-                    //var modelInput = new ModelInput();
                     var byteData = ImageToByte(originalBitmap);
                     float[] modelInputData = ConvertToModelInput(byteData);
                     var modelInput = TensorFloat.CreateFromArray(new long[] { 1, 3, 1080, 1920 }, modelInputData);
 
 
-                    SoftwareBitmap outputBitmap = new SoftwareBitmap(BitmapPixelFormat.Bgra8, originalBitmap.PixelWidth, originalBitmap.PixelHeight, BitmapAlphaMode.Premultiplied);
-
-
-                    //VideoFrame inputVideoFrame = VideoFrame.CreateWithSoftwareBitmap(originalBitmap);
-
-                    //var modelInput = new ModelInput(); // This should be based on your model's expected input type
-                    //modelInput.data = inputVideoFrame;
-                    
-
-
-                    float[] inputData = new float[1 * 3 * 1080 * 1920];
-                    // ... 填充 inputData ...
-
-                    var inputTensor = TensorFloat.CreateFromArray(new long[] { 1, 3, 1080, 1920 }, inputData);
-
                     _binding.Bind("modelInput", modelInput);
                     var results = _session.Evaluate(_binding, "modelOutput");
-                    //_binding.Bind("modelInput", inputTensor);
-                    //var results = _session.Evaluate(_binding, "modelOutput");
 
-                    //binding.Bind("onnx::Concat_0", modelInput);
-                    //var results = await session.EvaluateAsync(binding, "SessionRun");
+                    // 1. 从模型输出获取数据
+                    var outputTensor = results.Outputs["modelOutput"] as TensorFloat;
+                    var outputArray = outputTensor.GetAsVectorView().ToArray();
 
-                    // Operate on the image in the manner chosen by the user.
-                    //if (currentOperation == OperationType.Blur)
-                    //{
-                    //    _helper.Blur(originalBitmap, outputBitmap);
-                    //}
-                    //else if (currentOperation == OperationType.HoughLines)
-                    //{
-                    //    _helper.HoughLines(originalBitmap, outputBitmap);
-                    //}
-                    //else if (currentOperation == OperationType.Contours)
-                    //{
-                    //    _helper.Contours(originalBitmap, outputBitmap);
-                    //}
-                    //else if (currentOperation == OperationType.Histogram)
-                    //{
-                    //    _helper.Histogram(originalBitmap, outputBitmap);
-                    //}
-                    //else if (currentOperation == OperationType.MotionDetector)
-                    //{
-                    //    _helper.MotionDetector(originalBitmap, outputBitmap);
-                    //}
+                    // 2. 将此数据转换为适合 SoftwareBitmap 的字节格式（通常为 BGRA8）
+                    // 此处，我们假设 ConvertToByteFormat 函数将模型的 float 输出转换为 BGRA8 格式的字节数组
+                    byte[] outputBytes = ConvertToByteFormat(outputArray);
+
+                    // 3. 使用这些字节数据更新 outputBitmap
+                    SoftwareBitmap outputBitmap = new SoftwareBitmap(BitmapPixelFormat.Bgra8, 3840, 2160, BitmapAlphaMode.Premultiplied);
+                    using (BitmapBuffer buffer = outputBitmap.LockBuffer(BitmapBufferAccessMode.Write))
+                    {
+                        using (var reference = buffer.CreateReference())
+                        {
+                            if (reference is IMemoryBufferByteAccess byteAccess)
+                            {
+                                
+                                unsafe
+                                {
+                                    byte* data;
+                                    uint capacity;
+                                    byteAccess.GetBuffer(out data, out capacity);
+                                    //System.Runtime.InteropServices.Marshal.Copy(outputBytes, 0, IntPtr(data), outputBytes.Length);
+                                    BitmapPlaneDescription bufferLayout = buffer.GetPlaneDescription(0);
+                                    for (int i = 0; i < bufferLayout.Height; i++)
+                                    {
+                                        for (int j = 0; j < bufferLayout.Width; j++)
+                                        {
+                                            data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 0] = outputBytes[(2160 - i - 1) * 3840 + j];
+                                            data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 1] = outputBytes[3840*2160 + (2160 - i - 1) * 3840 + j];
+                                            data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 2] = outputBytes[3840 * 2160 * 2 + (2160 - i - 1) * 3840 + j];
+                                            data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 3] = (byte)255;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+
+
 
                     // Display both the original bitmap and the processed bitmap.
-                    _previewRenderer.RenderFrame(originalBitmap);
+                    //_previewRenderer.RenderFrame(originalBitmap);
                     _outputRenderer.RenderFrame(outputBitmap);
                 }
 
@@ -284,7 +299,7 @@ namespace NS_Upsampler
         }
         private async Task<LearningModel> LoadModelAsync()
         {
-            var modelFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///Assets/sd.onnx"));
+            var modelFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///Assets/SRNet.onnx"));
             return await LearningModel.LoadFromStorageFileAsync(modelFile);
         }
     }
