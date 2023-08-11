@@ -4,7 +4,7 @@ This is a super resolution application for ns gaming. It's designed for enhance 
 
 To use this, you should have a capture card hardware to project the picture to PC.
 
-`ns -> dock -> capture card -> PC -> monitor`
+`NS -> Dock -> Capture card -> PC -> Monitor`
 
 TODO: demo pics to add
 
