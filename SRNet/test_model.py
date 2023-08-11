@@ -30,3 +30,6 @@ def parse_img(img_path):
 
 # 打印输出
 parse_img("test_img.PNG")
+parse_img("test1.PNG")
+parse_img("test2.PNG")
+parse_img("test3.PNG")
