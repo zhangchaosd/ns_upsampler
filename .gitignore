@@ -2,3 +2,6 @@ __pycache__
 dataset/lr_videos
 dataset/hr_videos
 .DS_Store
+*.png
+*.mp4
+*.avi
