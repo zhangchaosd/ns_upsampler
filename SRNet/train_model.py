@@ -1,14 +1,11 @@
 import os
-import random
-
-import cv2
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
-
+from torchvision.transforms import InterpolationMode
 
 class SRNet(nn.Module):
     def __init__(self):
@@ -64,7 +61,7 @@ class NSSRDataset(Dataset):
         img_path = os.path.join(self.folder_path, self.image_files[idx])
         img = Image.open(img_path)
         img_lr = transforms.functional.resize(
-            img, (1080 // 2, 1920 // 2), Image.NEAREST
+            img, (1080 // 2, 1920 // 2), InterpolationMode.NEAREST
         )
 
         img_hr = self.transform2(img)
@@ -95,27 +92,27 @@ def export_ONNX(model):
 def train_epoch(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
     model.train()
-    for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)
+    for batch, (img_lr, img_hr) in enumerate(dataloader):
+        img_lr, img_hr = img_lr.to(device), img_hr.to(device)
 
         # Compute prediction error
-        pred = model(X)
-        loss = loss_fn(pred, y)
+        pred = model(img_lr)
+        loss = loss_fn(pred, img_hr)
 
         # Backpropagation
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
 
-        if batch % 100 == 0:
-            loss, current = loss.item(), (batch + 1) * len(X)
+        if batch % 1 == 0:
+            loss, current = loss.item(), (batch + 1) * len(img_lr)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
 
 def main():
-    epochs = 50
-    batch_size = 4
-    lr = 1e-3
+    epochs = 10
+    batch_size = 16
+    lr = 1e-4
     dataset = NSSRDataset()
     dataloader = DataLoader(dataset, batch_size=batch_size)
     device = (
@@ -127,8 +124,10 @@ def main():
     )
     print(f"Using {device} device")
     model = SRNet().to(device)
+    model_params = torch.load("SRNet_weights.pth",map_location="cpu")
+    model.load_state_dict(model_params)
     loss_fn = nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr)
+    optimizer = torch.optim.AdamW(model.parameters(), lr)
 
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
@@ -140,3 +139,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # model = SRNet()
+    # p = torch.load("SRNet_weights.pth",map_location="cpu")
+    # model.load_state_dict(p)
+    # export_ONNX(model)
