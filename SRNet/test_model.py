@@ -21,11 +21,11 @@ def parse_img(img_path):
 
     # 进行推断
     img_hr = sess.run(["modelOutput"], {"modelInput":img})[0]
-    print(img_hr.shape, img.max(), img.min())
     img_hr = img_hr.transpose(2, 3, 1, 0).squeeze()
+    print(img_hr.shape, img.max(), img.min())
     img_hr = (img_hr * 255).astype(np.uint8)
     img_hr = Image.fromarray(img_hr)
-    img_hr.save(img_path[:-4] + "_hr.png")
+    img_hr.save(img_path[:-4] + "_hr1.png")
     print("Image saved")
 
 # 打印输出

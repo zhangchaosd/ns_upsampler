@@ -5,3 +5,6 @@ dataset/hr_videos
 *.png
 *.mp4
 *.avi
+NS_Upsampler/bin
+NS_Upsampler/obj
+.vs
