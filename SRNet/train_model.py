@@ -2,10 +2,34 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
+import cv2
+class Adapter(nn.Module):
+    def __init__(self):
+        super(Adapter, self).__init__()
+        self.net = SRNet()
+        # self.net = torch.nn.Upsample(scale_factor=2, mode='nearest')
+        self.alpha_channel = torch.ones((1, 2160, 3840), dtype=torch.uint8) * 255
+
+    def forward(self, input_tensor):
+        if not self.training:
+            # BGRA (h, w, 4) uint8 to BGR (1, 3, h, w) float
+            input_tensor=input_tensor[:,:,:3].float()/255.
+            input_tensor = input_tensor.permute(2,0,1).unsqueeze(0)
+        output = self.net(input_tensor)  # all bga
+        if not self.training:
+            # out is BGRA uint8 too
+            # (1, 3, h, w) float to (3, h, w) uint8
+            output = (output.squeeze(0) * 255.).to(torch.uint8)
+            # vflip for SoftwareBitmap
+            output = transforms.functional.vflip(output)
+            # bgr to bgra
+            output = torch.cat([output,self.alpha_channel])
+            # (3, h, w) to (h, w, 3)
+            output = output.permute(1, 2, 0)
+        return output
 
 class SRNet(nn.Module):
     def __init__(self):
@@ -59,27 +83,24 @@ class NSSRDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.folder_path, self.image_files[idx])
-        img = Image.open(img_path)
+        img_hr = cv2.imread(img_path)  # bgr hwc
+        img_hr = self.transform2(img_hr)  # chw
         img_lr = transforms.functional.resize(
-            img, (1080 // 2, 1920 // 2), InterpolationMode.NEAREST
+            img_hr, (1080 // 2, 1920 // 2), InterpolationMode.NEAREST
         )
-
-        img_hr = self.transform2(img)
-        img_lr = self.transform2(img_lr)
-
         return img_lr, img_hr
 
 
-def export_ONNX(model):
+def export_ONNX(model, name = "SRNet.onnx"):
     import torch.onnx
 
     model.eval().to("cpu")
-    dummy_input = torch.randn((1, 3, 1080, 1920), requires_grad=True)
+    dummy_input = torch.ones((1080, 1920, 4), dtype=torch.float)
 
     torch.onnx.export(
         model,  # model being run
         dummy_input,  # model input (or a tuple for multiple inputs)
-        "SRNet.onnx",  # where to save the model
+        name,  # where to save the model
         export_params=True,  # store the trained parameter weights inside the model file
         opset_version=12,  # the ONNX version to export the model to
         do_constant_folding=True,  # whether to execute constant folding for optimization
@@ -91,6 +112,8 @@ def export_ONNX(model):
 
 def train_epoch(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    aver_loss = 0.
     model.train()
     for batch, (img_lr, img_hr) in enumerate(dataloader):
         img_lr, img_hr = img_lr.to(device), img_hr.to(device)
@@ -104,15 +127,16 @@ def train_epoch(dataloader, model, loss_fn, optimizer, device):
         optimizer.step()
         optimizer.zero_grad()
 
+        aver_loss += loss.item()
         if batch % 1 == 0:
             loss, current = loss.item(), (batch + 1) * len(img_lr)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+        aver_loss /= num_batches
+        print(f"Aver loss: {aver_loss:>7f}")
 
 
-def main():
-    epochs = 10
+def main(epochs = 10, lr = 0.001):
     batch_size = 16
-    lr = 1e-4
     dataset = NSSRDataset()
     dataloader = DataLoader(dataset, batch_size=batch_size)
     device = (
@@ -123,7 +147,7 @@ def main():
         else "cpu"
     )
     print(f"Using {device} device")
-    model = SRNet().to(device)
+    model = Adapter().to(device)
     model_params = torch.load("SRNet_weights.pth",map_location="cpu")
     model.load_state_dict(model_params)
     loss_fn = nn.MSELoss()
@@ -139,7 +163,7 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # model = SRNet()
+    # model = Adapter()
     # p = torch.load("SRNet_weights.pth",map_location="cpu")
     # model.load_state_dict(p)
-    # export_ONNX(model)
+    # export_ONNX(model, "SRNet7.onnx")

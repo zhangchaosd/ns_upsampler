@@ -26,6 +26,9 @@ using Windows.Media;
 using System.Reflection;
 using Windows.Storage.Streams;
 
+using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
+
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -60,6 +63,8 @@ namespace NS_Upsampler
         private LearningModel _learningModel = null;
         private LearningModelSession _session = null;
         private LearningModelBinding _binding = null;
+
+        private InferenceSession _session2 = null;
 
         private DispatcherTimer _FPSTimer = null;
         public MainPage()
@@ -151,8 +156,11 @@ namespace NS_Upsampler
 
 
             _learningModel = await LoadModelAsync();
-            _session = new LearningModelSession(_learningModel);
+            LearningModelDevice device = new LearningModelDevice(LearningModelDeviceKind.DirectXHighPerformance);
+            _session = new LearningModelSession(_learningModel, device);
             _binding = new LearningModelBinding(_session);
+            //_session2 = new InferenceSession("Assets/SRNet5.onnx");
+            _session2 = new InferenceSession("Assets/SRNet5.onnx", SessionOptions.MakeSessionOptionWithCudaProvider(0));
 
             // Create the frame reader
             MediaFrameSource frameSource = _mediaCapture.FrameSources[selectedSource.SourceInfo.Id];
@@ -240,20 +248,41 @@ namespace NS_Upsampler
                     originalBitmap = SoftwareBitmap.Convert(inputBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
 
                     var byteData = ImageToByte(originalBitmap);
-                    float[] modelInputData = ConvertToModelInput(byteData);
-                    var modelInput = TensorFloat.CreateFromArray(new long[] { 1, 3, 1080, 1920 }, modelInputData);
+                    //float[] modelInputData = ConvertToModelInput(byteData);
+                    var modelInput = TensorUInt8Bit.CreateFromArray(new long[] { 1080, 1920, 4 }, byteData.Take(1920*1080*4).ToArray());
 
 
-                    _binding.Bind("modelInput", modelInput);
-                    var results = _session.Evaluate(_binding, "modelOutput");
+                    //_binding.Bind("modelInput", modelInput);
+                    //var results = _session.Evaluate(_binding, "modelOutput");
 
                     // 1. 从模型输出获取数据
-                    var outputTensor = results.Outputs["modelOutput"] as TensorFloat;
-                    var outputArray = outputTensor.GetAsVectorView().ToArray();
+                    //var outputTensor = results.Outputs["modelOutput"] as TensorUInt8Bit;
+                    //var outputBytes = outputTensor.GetAsVectorView().ToArray();
+                    //var outputBytes = byteData;
 
                     // 2. 将此数据转换为适合 SoftwareBitmap 的字节格式（通常为 BGRA8）
                     // 此处，我们假设 ConvertToByteFormat 函数将模型的 float 输出转换为 BGRA8 格式的字节数组
-                    byte[] outputBytes = ConvertToByteFormat(outputArray);
+                    //byte[] outputBytes = ConvertToByteFormat(outputArray);
+
+                    //sesion2
+                    var inputs = new List<NamedOnnxValue>
+                    {
+                        NamedOnnxValue.CreateFromTensor("modelInput", new DenseTensor<byte>(byteData.Take(1920*1080*4).ToArray(), new int[] { 1080, 1920, 4 }))
+                    };
+
+                    // session2
+
+                    // 推理
+                    var results = _session2.Run(inputs);
+                    //var output = results["32"].AsEnumerable<float>();
+                    var resultsArray = results.ToArray();
+                    var outputBytes = resultsArray[0].AsTensor<byte>().ToArray<byte>();
+
+                    // 处理输出...
+                    //foreach (var item in results)
+                    //{
+                    //    Console.WriteLine(item);
+                    //}
 
                     // 3. 使用这些字节数据更新 outputBitmap
                     SoftwareBitmap outputBitmap = new SoftwareBitmap(BitmapPixelFormat.Bgra8, 3840, 2160, BitmapAlphaMode.Premultiplied);
@@ -269,18 +298,18 @@ namespace NS_Upsampler
                                     byte* data;
                                     uint capacity;
                                     byteAccess.GetBuffer(out data, out capacity);
-                                    //System.Runtime.InteropServices.Marshal.Copy(outputBytes, 0, IntPtr(data), outputBytes.Length);
-                                    BitmapPlaneDescription bufferLayout = buffer.GetPlaneDescription(0);
-                                    for (int i = 0; i < bufferLayout.Height; i++)
-                                    {
-                                        for (int j = 0; j < bufferLayout.Width; j++)
-                                        {
-                                            data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 0] = outputBytes[(2160 - i - 1) * 3840 + j];
-                                            data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 1] = outputBytes[3840*2160 + (2160 - i - 1) * 3840 + j];
-                                            data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 2] = outputBytes[3840 * 2160 * 2 + (2160 - i - 1) * 3840 + j];
-                                            data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 3] = (byte)255;
-                                        }
-                                    }
+                                    System.Runtime.InteropServices.Marshal.Copy(outputBytes, 0, (IntPtr)data, outputBytes.Length);
+                                    //BitmapPlaneDescription bufferLayout = buffer.GetPlaneDescription(0);
+                                    //for (int i = 0; i < bufferLayout.Height; i++)
+                                    //{
+                                    //    for (int j = 0; j < bufferLayout.Width; j++)
+                                    //    {
+                                    //        data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 0] = outputBytes[(2160 - i - 1) * 3840 + j];
+                                    //        data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 1] = outputBytes[3840*2160 + (2160 - i - 1) * 3840 + j];
+                                    //        data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 2] = outputBytes[3840 * 2160 * 2 + (2160 - i - 1) * 3840 + j];
+                                    //        data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 3] = (byte)255;
+                                    //    }
+                                    //}
                                 }
                             }
                         }
@@ -299,7 +328,7 @@ namespace NS_Upsampler
         }
         private async Task<LearningModel> LoadModelAsync()
         {
-            var modelFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///Assets/SRNet.onnx"));
+            var modelFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///Assets/SRNet5.onnx"));
             return await LearningModel.LoadFromStorageFileAsync(modelFile);
         }
     }

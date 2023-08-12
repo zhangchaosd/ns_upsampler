@@ -1,8 +1,10 @@
+import cv2
 import onnx
 import onnxruntime as ort
 from PIL import Image
 from torchvision import transforms
 import numpy as np
+import torch
 # 加载模型
 model = onnx.load("SRNet.onnx")
 
@@ -11,25 +13,20 @@ onnx.checker.check_model(model)
 
 
 # 加载运行时会话
-sess = ort.InferenceSession('SRNet.onnx')
+sess = ort.InferenceSession('SRNet5.onnx', providers=["CUDAExecutionProvider"])
 
 def parse_img(img_path):
-    img = Image.open(img_path).convert("RGB")
-    img = transforms.functional.resize(img, (1080, 1920))
-    img = transforms.functional.to_tensor(img)
-    img = img.unsqueeze(0).numpy()
+    image_np = cv2.imread(img_path)  # BGR (h, w, 3)
+    alpha_channel = np.full((1080, 1920, 1), 255, dtype=np.uint8)
+    bgra_tensor = np.concatenate([image_np, alpha_channel], axis=-1)  # BGRA
 
     # 进行推断
-    img_hr = sess.run(["modelOutput"], {"modelInput":img})[0]
-    print(img_hr.shape, img_hr.max(), img_hr.min())
-    img_hr = img_hr.transpose(2, 3, 1, 0).squeeze()
-    img_hr = (img_hr * 255).astype(np.uint8)
-    img_hr = Image.fromarray(img_hr)
-    img_hr.save(img_path[:-4] + "_hr1.png")
+    bgra_array = sess.run(["modelOutput"], {"modelInput":bgra_tensor})[0]
+    cv2.imwrite(img_path[:-4] + "_hrr.png", bgra_array)
     print("Image saved")
 
 # 打印输出
-parse_img("test_img.PNG")
+#parse_img("test_img.PNG")
 parse_img("test1.PNG")
 parse_img("test2.PNG")
 parse_img("test3.PNG")
