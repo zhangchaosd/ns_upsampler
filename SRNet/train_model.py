@@ -95,7 +95,7 @@ def export_ONNX(model, name = "SRNet.onnx"):
     import torch.onnx
 
     model.eval().to("cpu")
-    dummy_input = torch.ones((1080, 1920, 4), dtype=torch.float)
+    dummy_input = torch.ones((1080, 1920, 4), dtype=torch.uint8)
 
     torch.onnx.export(
         model,  # model being run
@@ -131,14 +131,14 @@ def train_epoch(dataloader, model, loss_fn, optimizer, device):
         if batch % 1 == 0:
             loss, current = loss.item(), (batch + 1) * len(img_lr)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-        aver_loss /= num_batches
-        print(f"Aver loss: {aver_loss:>7f}")
+    aver_loss /= num_batches
+    print(f"Aver loss: {aver_loss:>7f}")  #  nn.Upsample is 0.0006
 
 
 def main(epochs = 10, lr = 0.001):
     batch_size = 16
     dataset = NSSRDataset()
-    dataloader = DataLoader(dataset, batch_size=batch_size)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     device = (
         "cuda"
         if torch.cuda.is_available()
@@ -162,7 +162,7 @@ def main(epochs = 10, lr = 0.001):
 
 
 if __name__ == "__main__":
-    main()
+    main(10, 0.0005)
     # model = Adapter()
     # p = torch.load("SRNet_weights.pth",map_location="cpu")
     # model.load_state_dict(p)

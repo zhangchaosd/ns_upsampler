@@ -37,12 +37,10 @@
                 </Grid.Resources>
 
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Output of Operation"/>
+                    <TextBlock Name="FPSMonitor" Text="Output of Operation"/>
                     <Image Name="OutputImage"/>
                 </StackPanel>
             </Grid>
-
-            <TextBlock Name="FPSMonitor"/>
         </StackPanel>
     </Grid>
 </Page>

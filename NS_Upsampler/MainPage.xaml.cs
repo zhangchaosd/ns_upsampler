@@ -155,12 +155,12 @@ namespace NS_Upsampler
             }
 
 
-            _learningModel = await LoadModelAsync();
-            LearningModelDevice device = new LearningModelDevice(LearningModelDeviceKind.DirectXHighPerformance);
-            _session = new LearningModelSession(_learningModel, device);
-            _binding = new LearningModelBinding(_session);
-            //_session2 = new InferenceSession("Assets/SRNet5.onnx");
-            _session2 = new InferenceSession("Assets/SRNet5.onnx", SessionOptions.MakeSessionOptionWithCudaProvider(0));
+            //_learningModel = await LoadModelAsync();
+            //LearningModelDevice device = new LearningModelDevice(LearningModelDeviceKind.DirectXHighPerformance);
+            //_session = new LearningModelSession(_learningModel, device);
+            //_binding = new LearningModelBinding(_session);
+            _session2 = new InferenceSession("Assets/SRNet.onnx");
+            //_session2 = new InferenceSession("Assets/SRNet.onnx", SessionOptions.MakeSessionOptionWithCudaProvider(0));
 
             // Create the frame reader
             MediaFrameSource frameSource = _mediaCapture.FrameSources[selectedSource.SourceInfo.Id];
@@ -299,17 +299,6 @@ namespace NS_Upsampler
                                     uint capacity;
                                     byteAccess.GetBuffer(out data, out capacity);
                                     System.Runtime.InteropServices.Marshal.Copy(outputBytes, 0, (IntPtr)data, outputBytes.Length);
-                                    //BitmapPlaneDescription bufferLayout = buffer.GetPlaneDescription(0);
-                                    //for (int i = 0; i < bufferLayout.Height; i++)
-                                    //{
-                                    //    for (int j = 0; j < bufferLayout.Width; j++)
-                                    //    {
-                                    //        data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 0] = outputBytes[(2160 - i - 1) * 3840 + j];
-                                    //        data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 1] = outputBytes[3840*2160 + (2160 - i - 1) * 3840 + j];
-                                    //        data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 2] = outputBytes[3840 * 2160 * 2 + (2160 - i - 1) * 3840 + j];
-                                    //        data[bufferLayout.StartIndex + bufferLayout.Stride * i + 4 * j + 3] = (byte)255;
-                                    //    }
-                                    //}
                                 }
                             }
                         }
@@ -328,7 +317,7 @@ namespace NS_Upsampler
         }
         private async Task<LearningModel> LoadModelAsync()
         {
-            var modelFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///Assets/SRNet5.onnx"));
+            var modelFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri("ms-appx:///Assets/SRNet.onnx"));
             return await LearningModel.LoadFromStorageFileAsync(modelFile);
         }
     }
