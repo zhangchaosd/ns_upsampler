@@ -88,6 +88,12 @@ class NSSRDataset(Dataset):
         img_lr = transforms.functional.resize(
             img_hr, (1080 // 2, 1920 // 2), InterpolationMode.NEAREST
         )
+
+        # shuffle channels
+        permute_order = torch.randperm(3)
+        img_hr = img_hr[permute_order]
+        img_lr = img_lr[permute_order]
+
         return img_lr, img_hr
 
 
