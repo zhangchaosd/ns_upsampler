@@ -13,7 +13,7 @@ onnx.checker.check_model(model)
 
 
 # 加载运行时会话
-sess = ort.InferenceSession('SRNet7.onnx', providers=["CUDAExecutionProvider"])
+sess = ort.InferenceSession('SRNet.onnx', providers=["CUDAExecutionProvider"])
 
 def parse_img(img_path):
     image_np = cv2.imread(img_path)  # BGR (h, w, 3)
