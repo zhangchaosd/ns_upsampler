@@ -1,19 +1,12 @@
 import cv2
-import onnx
 import onnxruntime as ort
-from PIL import Image
-from torchvision import transforms
 import numpy as np
-import torch
-# 加载模型
-model = onnx.load("SRNet.onnx")
 
-# 使用ONNX的check_model函数验证模型
-onnx.checker.check_model(model)
 
 
 # 加载运行时会话
-sess = ort.InferenceSession('SRNet.onnx', providers=["CUDAExecutionProvider"])
+sess = ort.InferenceSession('SRNet.onnx', providers=["CPUExecutionProvider"])
+# sess = ort.InferenceSession('SRNet.onnx', providers=["CUDAExecutionProvider"])
 
 def parse_img(img_path):
     image_np = cv2.imread(img_path)  # BGR (h, w, 3)
@@ -25,8 +18,16 @@ def parse_img(img_path):
     cv2.imwrite(img_path[:-4] + "_hrr.png", bgra_array)
     print("Image saved")
 
+def parse_img_3channel(img_path):
+    image_np = cv2.imread(img_path)  # BGR (h, w, 3)
+    print(image_np.shape, image_np.dtype)
+    # return
+    bgra_array = sess.run(["output"], {"input":image_np})[0]
+    cv2.imwrite(img_path[:-4] + "_hrr.png", bgra_array)
+    print("Image saved")
+
 # 打印输出
 #parse_img("test_img.PNG")
-parse_img("test1.PNG")
-parse_img("test2.PNG")
-parse_img("test3.PNG")
+parse_img_3channel("test1.PNG")
+parse_img_3channel("test2.PNG")
+parse_img_3channel("test3.PNG")
