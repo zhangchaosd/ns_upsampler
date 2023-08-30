@@ -1,19 +1,14 @@
 import cv2
 import onnxruntime as ort
-import numpy as np
 
+model_path = 'SRNet.onnx'
 
-
-# 加载运行时会话
-sess = ort.InferenceSession('SRNet.onnx', providers=["CPUExecutionProvider"])
+sess = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
 # sess = ort.InferenceSession('SRNet.onnx', providers=["CUDAExecutionProvider"])
+print("Available Providers: ", ort.get_available_providers())
 
 def parse_img(img_path):
     image_np = cv2.imread(img_path)  # BGR (h, w, 3)
-    # alpha_channel = np.full((1080, 1920, 1), 255, dtype=np.uint8)
-    # bgra_tensor = np.concatenate([image_np, alpha_channel], axis=-1)  # BGRA
-
-    # 进行推断
     bgra_array = sess.run(["modelOutput"], {"modelInput":image_np})[0]
     cv2.imwrite(img_path[:-4] + "_hrr.png", bgra_array)
     print("Image saved")
@@ -26,8 +21,7 @@ def parse_img_3channel(img_path):
     cv2.imwrite(img_path[:-4] + "_hr.png", bgra_array)
     print("Image saved")
 
-# 打印输出
-#parse_img("test_img.PNG")
-parse_img_3channel("test1.PNG")
-parse_img_3channel("test2.PNG")
-parse_img_3channel("test3.PNG")
+
+parse_img_3channel("Assets/test1.PNG")
+parse_img_3channel("Assets/test2.PNG")
+parse_img_3channel("Assets/test3.PNG")

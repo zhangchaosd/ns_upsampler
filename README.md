@@ -11,7 +11,12 @@ To use this, you should have a capture card hardware to project the picture to P
 
 `NS -> Dock -> Capture card -> PC -> Monitor`
 
-TODO: demo pics to add
+System requirments:
+
+GPU: Intel GPU
+
+TODO:
+NVIDIA GPUs
 
 ## 1. Train a Super-Resolution model
 

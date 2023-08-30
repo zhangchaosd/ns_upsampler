@@ -13,3 +13,6 @@ x64
 x86
 opencv
 openvino
+
+*.pth
+# *.onnx
