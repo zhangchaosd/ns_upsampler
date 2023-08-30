@@ -8,3 +8,8 @@ SRNet/hr_frames
 NS_Upsampler/bin
 NS_Upsampler/obj
 .vs
+*.user
+x64
+x86
+opencv
+openvino

@@ -2,6 +2,11 @@
 
 This is a super resolution application for ns gaming. It's designed for enhance the resolution from 1080p to 2160p. Or enhance the quality in theory(by model training data).
 
+<!-- ![PC](/Assets/cp0.png "PC") -->
+![PC](/Assets/cp1.png "PC")
+<!-- ![PC](/Assets/cp2.png "PC") -->
+<!-- ![PC](/Assets/cp3.png "PC") -->
+
 To use this, you should have a capture card hardware to project the picture to PC.
 
 `NS -> Dock -> Capture card -> PC -> Monitor`
