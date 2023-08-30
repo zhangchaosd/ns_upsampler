@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
     if (deviceID == -1) {
         return 0;
     }
-    //AudioStart();
+    audioStart();
     std::cout << ov::get_openvino_version() << std::endl;
     const std::string model_path = "SRNet.onnx";
 
@@ -121,6 +121,6 @@ int main(int argc, char* argv[])
     }
     cap.release();
     cv::destroyAllWindows();
-   // AudioStop();
+    audioStop();
     return 0;
 }

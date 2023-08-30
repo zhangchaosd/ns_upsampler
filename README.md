@@ -11,6 +11,8 @@ To use this, you should have a capture card hardware to project the picture to P
 
 `NS -> Dock -> Capture card -> PC -> Monitor`
 
+The first version available here: https://github.com/zhangchaosd/ns_upsampler/releases/tag/alpha
+
 System requirments:
 
 GPU: Intel GPU
@@ -32,7 +34,7 @@ This step is to get the `SRNet.onnx` file. You can just use the file in the repo
 
 You can change the hyper-parameters or the model as you like. In this repo, it's a very simple small model to ensure the low infer latency.
 
-`python SRNet/train_model.py`
+`python SRNet/train.py`
 
 ### 1.3 Test model (optional)
 
@@ -40,5 +42,14 @@ You can change the hyper-parameters or the model as you like. In this repo, it's
 
 ## 2. Compile the NS_Upsampler application
 
+TODO
 
-Developping
+Download OpenCV and OpenVINO sdk, put them in the folder like this:
+
+![PC](/Assets/sdks.png "PC")
+
+Visual Studio 2022
+
+Open `NS_SuperResolution/NS_SuperResolution.sln` and build.
+
+Remember copy OpenCV and OpenVINO dlls to the exe path to run.

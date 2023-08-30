@@ -439,7 +439,7 @@ class WrapperBGRA(nn.Module):
         img = torch.permute(img, (1,2,0))  # 4,h,w -> h,w,4
         return img
 
-def export(model, path=".", name="SRNet0830.onnx"):
+def export(model, path=".", name="SRNet.onnx"):
     model.eval().to("cpu")
     m = WrapperRGB()
     m.model = model

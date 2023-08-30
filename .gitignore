@@ -15,4 +15,4 @@ opencv
 openvino
 
 *.pth
-# *.onnx
+*.onnx

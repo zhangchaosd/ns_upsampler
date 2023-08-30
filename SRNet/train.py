@@ -40,7 +40,7 @@ def main(epochs = 10, lr = 0.001):
     )
     print(f"Using {device} device")
     model = FRNet().to(device)
-    model_params = torch.load("SRNet_weights0830.pth",map_location="cpu")
+    model_params = torch.load("SRNet_weights.pth",map_location="cpu")
     model.load_state_dict(model_params)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr)
